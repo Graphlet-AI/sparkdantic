@@ -85,7 +85,11 @@ _type_mapping = MappingProxyType(
 )
 
 
-def SparkField(*args, spark_type: Optional[Union[Type['DataType'], str]] = None, **kwargs) -> Field:
+def SparkField(
+    *args,
+    spark_type: Optional[Union[Type['DataType'], 'DataType', str]] = None,
+    **kwargs,
+) -> Field:
     if spark_type is not None:
         kwargs['spark_type'] = spark_type
     return Field(*args, **kwargs)
@@ -252,9 +256,10 @@ def create_json_spark_schema(
                 if isinstance(override, str):
                     spark_type = override
                 elif utils.have_pyspark and _is_spark_datatype(override):
-                    spark_type = override.typeName()
-                    if spark_type == 'struct':
+                    if isinstance(override, DataType):
                         spark_type = override.jsonValue()
+                    else:
+                        spark_type = override.typeName()
                 else:
                     msg = '`spark_type` override should be a `str` type name (e.g. long)'
                     if utils.have_pyspark:
@@ -641,13 +646,15 @@ def _is_spark_datatype(t: Type) -> bool:
     Returns:
         bool: a boolean indicating if the type is a PySpark DataType.
     """
-    if isinstance(t, StructType):
-        return True
-    return inspect.isclass(t) and issubclass(t, DataType)
+    return (inspect.isclass(t) and issubclass(t, DataType)) or isinstance(t, DataType)
 
 
 def _json_type_to_ddl(json_type: Union[str, Dict[str, Any]]) -> str:
-    """Maps JSON schema types to DDL types.
+    """Converts Spark JSON schema types to SQL DDL types.
+
+    Scalar JSON and SQL representations can differ, notably for geospatial types.
+    Normalize scalar type names and aliases, then use PySpark for conversion.
+    Requires PySpark for scalar types, but no Spark session.
 
     Args:
         json_type (Union[str, Dict[str, Any]]): The JSON schema type to convert.
@@ -656,13 +663,16 @@ def _json_type_to_ddl(json_type: Union[str, Dict[str, Any]]) -> str:
         str: The DDL type representation.
     """
     if isinstance(json_type, str):
-        # Map INTEGER to INT
-        if json_type.upper() == 'INTEGER':
-            return 'INT'
-        elif json_type.upper().startswith('DECIMAL'):
-            return json_type.upper().replace(' ', '')  # Remove whitespaces
-        else:
-            return json_type.upper()
+        utils.require_pyspark()
+        type_name, separator, parameters = json_type.partition('(')
+        type_name = {
+            'int': 'integer',
+            'bigint': 'long',
+            'smallint': 'short',
+            'tinyint': 'byte',
+        }.get(type_name.lower(), type_name.lower())
+        data_type = StructType().add('', type_name + separator + parameters)[0].dataType
+        return data_type.simpleString().upper()
 
     if json_type['type'] == 'struct':
         nested_fields = []

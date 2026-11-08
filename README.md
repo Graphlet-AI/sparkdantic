@@ -3,7 +3,7 @@
 [![codecov](https://codecov.io/gh/mitchelllisle/sparkdantic/graph/badge.svg?token=O6PPQX4FEX)](https://codecov.io/gh/mitchelllisle/sparkdantic)
 [![PyPI version](https://badge.fury.io/py/sparkdantic.svg)](https://badge.fury.io/py/sparkdantic)
 
-> 1️⃣ version: 2.6.0
+> 1️⃣ version: 2.9.0
 
 > ✍️ author: Mitchell Lisle
 
@@ -36,7 +36,19 @@ pip install "sparkdantic[pyspark]"
 
 ### Supported PySpark versions
 
-PySpark version `3.3.0` or higher, up to but not including `4.1.0`
+PySpark version `3.3.0` or higher, up to but not including `4.3.0`, including the `4.2.x` series.
+
+### Release notes (2.9.0)
+
+- Added support for PySpark `4.2.x`, preserving support for PySpark `3.3.0` and higher.
+- Aligned the optional dependency and runtime version bounds to `>=3.3.0,<4.3.0`.
+- Added PySpark `4.2.0` to CI alongside `3.5.5` and `4.1.1`.
+- Fixed JSON-to-DDL type conversion for Spark 4.1 geospatial types (`GEOMETRY`, `GEOGRAPHY`), whose JSON schema representation differs from their DDL form. Conversion now delegates to PySpark's own type parser, making it more resilient to future type additions.
+
+Spark `4.2` enables Arrow-based pandas conversion and Arrow-optimized Python UDFs and UDTFs by default.
+Arrow-dependent workflows require PyArrow `18.0.0` or higher. Review the
+[PySpark upgrade guide](https://spark.apache.org/docs/4.2.0/api/python/migration_guide/pyspark_upgrade.html#upgrading-from-pyspark-4-1-to-4-2)
+for application-level migration considerations; these changes do not require changes to ordinary SparkDantic model definitions.
 
 ## Usage
 
@@ -176,7 +188,7 @@ json_spark_schema = create_json_spark_schema(EmployeeModel)
 ## Contributing
 Contributions welcome! If you would like to add a new feature / fix a bug feel free to raise a PR and tag me (`mitchelllisle`) as
 a reviewer. Please setup your environment locally to ensure all styling and development flow is as close to the standards set in
-this project as possible. To do this, the main thing you'll need is `poetry`. You should also run `make install-dev-local` which 
+this project as possible. To do this, the main thing you'll need is `uv`. You should also run `make install-dev-local` which 
 will install the `pre-commit-hooks` as well as install the project locally. PRs won't be accepted without sufficient tests and 
 we will be strict on maintaining a 100% test coverage.
 
